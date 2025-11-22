@@ -1,15 +1,11 @@
 -- SETTINGS
-local TELE_DISTANCE = 3        -- khoảng cách ra sau target
-local LOW_HP = 20              -- % máu về safe zone
+local TELE_DISTANCE = 3
+local LOW_HP = 20
 local SAFEZONE_POS = Vector3.new(0,50,0)
-local TELE_COOLDOWN = 0.05     -- update nhanh nhưng mượt
+local TELE_COOLDOWN = 0.05
 local ORBIT_HEIGHT = 0.5
 local AIM_SPEED = 0.15
 local FOV_RADIUS = 150
-local TWEEN_TIME = 0.08        -- thời gian tween mượt
-
--- Tween service
-local TweenService = game:GetService("TweenService")
 
 -- GUI
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
@@ -61,15 +57,7 @@ end)
 -- Rainbow effect
 local function rainbowEffect(character)
     spawn(function()
-        local colors = {
-            Color3.fromRGB(255,0,0),
-            Color3.fromRGB(255,127,0),
-            Color3.fromRGB(255,255,0),
-            Color3.fromRGB(0,255,0),
-            Color3.fromRGB(0,0,255),
-            Color3.fromRGB(75,0,130),
-            Color3.fromRGB(148,0,211)
-        }
+        local colors = {Color3.fromRGB(255,0,0), Color3.fromRGB(255,127,0), Color3.fromRGB(255,255,0), Color3.fromRGB(0,255,0), Color3.fromRGB(0,0,255), Color3.fromRGB(75,0,130), Color3.fromRGB(148,0,211)}
         for i = 1, 10 do
             local p = Instance.new("Part")
             p.Shape = "Ball"
@@ -94,7 +82,7 @@ FOV.Thickness = 2
 FOV.Filled = false
 FOV.Visible = true
 
--- Helper: check target in FOV
+-- Helper: target in FOV màn hình
 local function inFOV(targetPos)
     local camera = workspace.CurrentCamera
     local screenPos, onScreen = camera:WorldToViewportPoint(targetPos)
@@ -104,7 +92,7 @@ local function inFOV(targetPos)
     return dist <= FOV_RADIUS
 end
 
--- MAIN TELEPORT + AIM LOOP
+-- MAIN LOOP
 spawn(function()
     local player = game.Players.LocalPlayer
     local camera = workspace.CurrentCamera
@@ -123,37 +111,33 @@ spawn(function()
         -- Safe zone
         if humanoid.Health / humanoid.MaxHealth * 100 <= LOW_HP then
             rainbowEffect(char)
-            char:SetPrimaryPartCFrame(CFrame.new(SAFEZONE_POS))
+            char.HumanoidRootPart.CFrame = CFrame.new(SAFEZONE_POS)
             continue
         end
 
-        -- Get target
+        -- Target
         local targetName = TargetBox.Text
         if targetName == "" then continue end
         local targetPlayer = game.Players:FindFirstChild(targetName)
         if not targetPlayer or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then continue end
         local targetHRP = targetPlayer.Character.HumanoidRootPart
 
-        -- Chỉ teleport + aim nếu target trong FOV
+        -- Chỉ tele + aim nếu target trong FOV
         if not inFOV(targetHRP.Position) then continue end
 
-        -- Tele ra sau lưng mượt bằng Tween
+        -- Tele ra sau lưng target mượt bằng CFrame
         local lookDir = targetHRP.CFrame.LookVector
-        local offset = -lookDir * TELE_DISTANCE + Vector3.new(0, ORBIT_HEIGHT, 0)
-        local targetPos = targetHRP.Position + offset
-        local tweenInfo = TweenInfo.new(TWEEN_TIME, Enum.EasingStyle.Linear)
-        local tweenGoal = {CFrame = CFrame.new(targetPos, targetHRP.Position)}
-        TweenService:Create(char.PrimaryPart or char:FindFirstChild("HumanoidRootPart"), tweenInfo, tweenGoal):Play()
+        local targetPos = targetHRP.Position - lookDir * TELE_DISTANCE + Vector3.new(0, ORBIT_HEIGHT, 0)
+        char.HumanoidRootPart.CFrame = CFrame.new(targetPos, targetHRP.Position)
 
-        -- Rainbow effect
+        -- Rainbow
         rainbowEffect(char)
 
-        -- Aim camera
+        -- Aim camera theo target
         local direction = (targetHRP.Position - camera.CFrame.Position).Unit
-        local newCFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + direction)
-        camera.CFrame = camera.CFrame:Lerp(newCFrame, AIM_SPEED)
+        camera.CFrame = camera.CFrame:Lerp(CFrame.new(camera.CFrame.Position, camera.CFrame.Position + direction), AIM_SPEED)
 
-        -- Update FOV position
+        -- FOV vòng tròn quanh chuột
         local mouse = player:GetMouse()
         FOV.Position = Vector2.new(mouse.X, mouse.Y)
     end
